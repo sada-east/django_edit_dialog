@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spot List</title>
+  <style>
+    td {
+      padding: 0 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spot List</h1>
+  <table rules="rows">
+    <tr><th>スポット</th><th>座標</th></tr>
+    {% for spot in object_list %}
+      <tr>
+        <td>
+          <a id="link_{{ spot.id }}" href="{{ spot.gmap_url }}" target="_blank">{{ spot.name }}</a>
+        </td>
+        <td>
+          <pre id="coords_{{ spot.id }}">{{ spot.coords_str }}</pre>
+        </td>
+        <td>
+          <a href="javascript:void(0);" onclick="openEditDialog(event);" spotId="{{ spot.id }}">編集</a>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  <script>
+    // 開いたダイアログを憶えておく連想配列
+    const dialogs = {};
+
+    // 座標編集用のダイアログを開く
+    function openEditDialog(event) {
+      // クリックされた要素からスポットの id を取得して URL を作る
+      const spotId = event.target.attributes.spotId.value;
+      const url = `/app/edit-coords/${spotId}`;
+
+      // 座標編集画面をダイアログとして開く
+      const coordsEditor = window.open(url, `coords_${spotId}`, "popup, width=600, height=400");
+
+      // 開いたダイアログを dialogs に登録する (すでに開いていれば上書きする)
+      dialogs[spotId] = coordsEditor;
+    }
+
+    // 座標の JSON から Google Maps のその座標の URL を作る
+    function getGMapUrl(coords) {
+      const coords_obj = JSON.parse(coords);
+      const query = `${coords_obj.latitude}%2C${coords_obj.longitude}`;
+      return 'https://www.google.com/maps/search/?api=1&query=' + query;
+    }
+
+    // dialog からのメッセージを受け取るようにする
+    window.addEventListener('message', e => {
+      // dialogs に登録された Window からのメッセージのみ処理する
+      const spotId = e.data.spotId;
+      if (dialogs[spotId] === e.source) {
+        // 表示中の座標の値を更新する
+        const coordsPre = document.getElementById(`coords_${e.data.spotId}`);
+        coordsPre.innerText = e.data.coords
+
+        // Google Maps へのリンクを更新する
+        const link = document.getElementById(`link_${e.data.spotId}`);
+        link.setAttribute('href', getGMapUrl(e.data.coords));
+      }
+    });
+
+    // このページを離れたら開いたダイアログも閉じるようにする
+    window.addEventListener('beforeunload', e => {
+      for (let key in dialogs) {
+        dialogs[key].close();
+      }
+    });
+  </script>
+</body>
+</html>

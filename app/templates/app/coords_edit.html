@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coords Edit</title>
+</head>
+<body>
+
+<h1>{{ spot_name }} の座標</h1>
+
+<form method="POST">
+  {% csrf_token %}
+  {{ form.as_p }}
+</form>
+
+<button onclick="window.close();">閉じる</button>
+<button onclick="revert();">編集前に戻す</button>
+<button onclick="save(false);">保存して編集を続ける</button>
+<button onclick="save(true);">保存して閉じる</button>
+
+{# 「保存して編集を続ける / 保存して閉じる」が成功してリダイレクトして来た場合 #}
+{% if success and origin %}
+<script>
+  // 呼び出し元のウィンドウに、座標の情報を送信する
+  const coords = {
+    latitude: {{ form.latitude.value }},
+    longitude: {{ form.longitude.value }}
+  };
+  const message = {
+    spotId: "{{ spot_id }}",
+    coords: JSON.stringify(coords, null, '    ')
+  };
+  window.opener.postMessage(message, "{{ origin }}");
+</script>
+{% endif %}
+
+{# 「保存して閉じる」が成功してリダイレクトして来た場合 #}
+{% if success and close %}
+<script>
+  window.close();
+</script>
+{% endif %}
+
+<script>
+  // form を送信する関数
+  function save(close) {
+    const form = document.forms[0];
+    let url = "{% url 'app:edit-coords' spot_id %}";
+
+    // 保存して閉じるなら、閉じるフラグを GET パラメタにセットする
+    if (close) {
+      url += "?close=1";
+    }
+
+    form.action = url;
+    form.submit();
+  }
+
+  // 編集前に戻す関数
+  function revert() {
+    const url = "{% url 'app:edit-coords' spot_id %}";
+    location.replace(url);
+  }
+</script>
+
+</body>
+</html>
